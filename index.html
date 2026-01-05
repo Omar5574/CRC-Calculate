@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRC Lab V13.1 (Tabs Fixed)</title>
+    <title>CRC Lab V14.1 (All Blue Adds)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Fira+Code:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; overflow-x: hidden; }
         .font-mono { font-family: 'Fira Code', monospace; } 
         
         .math-board-wrapper {
@@ -43,48 +43,52 @@
 
         /* Styles */
         .cell.quotient { color: #64748b; font-size: 18px; border-bottom: none; }
-        .cell.dividend { background-color: #f1f5f9; border-top: 4px solid #1e2937; border-bottom: none; }
+        .cell.dividend { background-color: #f8fafc; border-top: 4px solid #1e2937; border-bottom: none; font-size: 26px; }
         .cell.divisor { color: #0f172a; font-weight: 900; }
         .cell.subtrahend { color: #475569; }
         .cell.line { border-bottom: 3px solid #1e2937; height: 28px; align-self: start; }
+        .cell.result { color: #0f172a; font-weight: 800; background-color: #fffbeb; } 
         
-        /* The New Pattern Row */
-        .cell.pattern { 
-            color: #0f172a; 
-            font-weight: 800; 
-            background-color: #fffbeb; /* Light yellow background for focus */
-            border-bottom: 1px dashed #e2e8f0;
+        /* Dropped Bit Styling (Blue) */
+        .cell.dropped { 
+            color: #2563eb; font-weight: 900; 
+            background-color: #eff6ff; 
+            border: 2px dashed #60a5fa; 
+            border-radius: 8px;
+            animation: popIn 0.3s ease-out;
         } 
-        /* The specific bit that was just dropped */
+        
+        /* Padding Styling (Now Blue too!) */
+        .cell.padding { 
+            color: #2563eb; font-weight: 900; 
+            background-color: #eff6ff; 
+            border-bottom: 2px solid #bfdbfe; /* Subtle distinguish */
+        } 
+
+        /* New Bit in Pattern Rewrite (Blue) */
         .cell.pattern.new-bit {
             color: #2563eb; 
             background-color: #eff6ff;
+            border: 2px dashed #60a5fa;
+            border-radius: 8px;
         }
-
-        .cell.padding { color: #dc2626; font-weight: 900; background-color: #fef2f2; } 
+        
+        .cell.arrow { color: #ef4444; font-size: 32px; font-weight: 900; z-index: 20; animation: bounceArrow 1s infinite; }
         
         /* MSB Indicator */
         .msb-indicator {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #f59e0b;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 50;
-            animation: fadeIn 0.3s;
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            background-color: #f59e0b; color: white; padding: 2px 6px;
+            border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 50; animation: fadeIn 0.3s;
         }
         .msb-indicator::after {
             content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
             border-width: 4px 4px 0; border-style: solid; border-color: #f59e0b transparent transparent transparent;
         }
 
+        @keyframes bounceArrow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -5px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         .bracket-wall { border-right: 4px solid #1e2937; height: 100%; position: absolute; right: 0; top: 0; z-index: 5; }
@@ -104,7 +108,7 @@
         }
 
         /* Rx Mode */
-        body.rx-active .cell.padding { color: #059669; background-color: #ecfdf5; }
+        body.rx-active .cell.padding { color: #059669; background-color: #ecfdf5; border-color: #6ee7b7; }
         body.rx-active .msb-indicator { background-color: #059669; }
         body.rx-active .msb-indicator::after { border-color: #059669 transparent transparent transparent; }
     </style>
@@ -114,7 +118,7 @@
     <!-- Header -->
     <header class="bg-slate-900 text-white py-5 px-8 shadow-lg flex justify-between items-center sticky top-0 z-40">
         <div class="flex items-center gap-6">
-            <h1 class="text-3xl font-bold text-yellow-400 font-mono tracking-wider">CRC Lab V13.1</h1>
+            <h1 class="text-3xl font-bold text-yellow-400 font-mono tracking-wider">CRC Lab V14.1</h1>
             
             <div class="flex bg-slate-800 rounded-lg p-1 text-sm border border-slate-700">
                 <button onclick="setMode('tx')" id="tabTx" class="px-6 py-2 rounded-md font-bold transition flex gap-2 items-center bg-blue-600 text-white shadow-md">
@@ -126,7 +130,7 @@
             </div>
         </div>
         <div class="text-sm text-slate-400 font-medium bg-slate-800 px-3 py-1 rounded">
-             Full Pattern Rewrite
+             Blue Bits Consistency
         </div>
     </header>
 
@@ -136,11 +140,11 @@
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-8 items-end justify-center">
             <div>
                 <label class="text-xs font-bold text-slate-500 uppercase block mb-2" id="labelData">الرسالة (Message)</label>
-                <input type="text" id="inData" value="1010" class="w-64 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
+                <input type="text" id="inData" value="1010001101" class="w-64 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
             </div>
             <div>
                 <label class="text-xs font-bold text-slate-500 uppercase block mb-2">المولد (Divisor)</label>
-                <input type="text" id="inPoly" value="1101" class="w-40 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
+                <input type="text" id="inPoly" value="110101" class="w-40 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
             </div>
             
             <div id="rxTools" class="hidden">
@@ -157,7 +161,7 @@
         <!-- Explanation -->
         <div class="w-full max-w-7xl mx-auto">
             <div class="why-box fade-in" id="doctorBox">
-                <strong>👨‍🏫 شرح الخطوة:</strong> <span id="explainText">اضغط "ابدأ الحل" للمتابعة.</span>
+                <strong>👨‍🏫 الملاحظات:</strong> <span id="explainText">اضغط "ابدأ الحل" للمتابعة.</span>
             </div>
         </div>
 
@@ -208,17 +212,16 @@
             q.push({
                 op: 'setup', data, poly, padded: fullDividend, padding: paddingCount, 
                 startCol: polyLen + 1, totalCols: totalCols,
-                explain: (mode === 'tx') ? `<strong>البداية:</strong> الرسالة + <span class="text-red-600">${paddingCount} أصفار</span>.` : `<strong>البداية:</strong> الرسالة المستقبلة.`
+                explain: (mode === 'tx') 
+                    ? `<strong>البداية:</strong> الرسالة + <span class="text-blue-600 font-bold">${paddingCount} أصفار زرقاء</span> (Padding).`
+                    : `<strong>البداية:</strong> الرسالة المستقبلة.`
             });
 
-            // Logic: Maintain 'currentWindow' which is the chunk we are looking at.
-            // Initially, it is the first 'polyLen' bits.
-            // We also need to know "where" in the grid this window starts (colOffset).
-            
+            // "Current Window" logic
             let currentWindow = dividendArr.slice(0, polyLen);
-            let nextBitPointer = polyLen; // Index of next bit to drop from dividendArr
-            let currentRow = 2; // Setup is row 1 (quotient), 2 (dividend)
-            let currentCol = polyLen + 1; // Start column of dividend
+            let nextBitPointer = polyLen; 
+            let currentRow = 2; 
+            let currentCol = polyLen + 1; 
 
             // Loop until done
             while (true) {
@@ -226,7 +229,6 @@
                 let workRow = currentRow + 1;
 
                 // 1. Update Quotient (Top Row)
-                // We update quotient at the position of the current MSB
                 q.push({
                     op: 'quotient', val: (msb === '1' ? '1' : '0'), col: currentCol,
                     explain: (msb === '1') ? `الـ <strong>MSB=1</strong> ← الناتج فوق 1.` : `الـ <strong>MSB=0</strong> ← الناتج فوق 0.`
@@ -234,30 +236,26 @@
 
                 if (msb === '0') {
                     // --- SKIP LOGIC (No Subtraction) ---
-                    // We just shift left (drop 0) and bring down next bit.
-                    // Effectively: New Window = currentWindow[1:] + nextBit
-                    // We write this New Window on the NEXT row.
-                    
                     if (nextBitPointer < dividendArr.length) {
                         let nextBit = dividendArr[nextBitPointer];
                         let newWindow = currentWindow.slice(1);
                         newWindow.push(nextBit);
                         
-                        currentCol++; // Shifted right by 1
+                        currentCol++; 
                         
                         q.push({
                             op: 'rewrite_pattern',
                             pattern: newWindow,
-                            row: workRow, // Write on next row immediately
+                            row: workRow, 
                             col: currentCol,
                             newBitVal: nextBit,
-                            msbCol: currentCol, // Mark MSB of new pattern
+                            msbCol: currentCol, 
                             explain: `الـ <strong>MSB=0</strong>: مش هنطرح. <br>هنرحل (Shift) وننزل الرقم اللي عليه الدور <strong>(${nextBit})</strong>.<br>الرقم الجديد بقى: <code>${newWindow.join('')}</code>.`
                         });
                         
                         currentWindow = newWindow;
                         nextBitPointer++;
-                        currentRow += 1; // Only consumed 1 row for the rewrite
+                        currentRow += 1; 
                         
                     } else {
                         // Done (MSB 0 and no more bits)
@@ -284,20 +282,19 @@
                     let xorResult = [];
                     for(let k=0; k<polyLen; k++) xorResult.push(currentWindow[k] === poly[k] ? '0' : '1');
                     
-                    // New Window logic
-                    let newWindow = xorResult.slice(1); // Drop MSB (it became 0)
+                    let newWindow = xorResult.slice(1); 
                     
                     if (nextBitPointer < dividendArr.length) {
                         let nextBit = dividendArr[nextBitPointer];
                         newWindow.push(nextBit);
                         
-                        currentCol++; // Shift right
+                        currentCol++; 
                         
-                        // 5. Rewrite Pattern (The Result + Dropped Bit)
+                        // 5. Rewrite Pattern
                         q.push({
                             op: 'rewrite_pattern',
                             pattern: newWindow,
-                            row: workRow + 2, // Sub + Line + Result
+                            row: workRow + 2,
                             col: currentCol,
                             newBitVal: nextBit,
                             msbCol: currentCol,
@@ -306,12 +303,10 @@
                         
                         currentWindow = newWindow;
                         nextBitPointer++;
-                        currentRow += 3; // Consumed 3 rows
+                        currentRow += 3; 
 
                     } else {
                         // Final Result (No drop)
-                        // currentWindow becomes the Remainder (size PolyLen-1)
-                        // Actually xorResult.slice(1) IS the remainder.
                         currentWindow = xorResult.slice(1);
                         
                         q.push({
@@ -324,10 +319,9 @@
                 }
             }
 
-            let finalCRC = currentWindow.join('');
-            // Pad
-            while(finalCRC.length < polyLen - 1) finalCRC = '0' + finalCRC;
-
+            // Ensure Final CRC length is EXACTLY polyLen - 1
+            let finalCRC = currentWindow.slice(currentWindow.length - (polyLen - 1)).join('');
+            
             return { q, finalCRC, totalCols };
         }
 
@@ -362,13 +356,11 @@
                 for(let i=0; i<step.len; i++) addEl(createCell(step.row, step.col+i, '', 'line'));
             }
             else if(step.op === 'rewrite_pattern') {
-                // Draw the full new pattern in one row
                 step.pattern.forEach((bit, idx) => {
-                    // Check if this bit is the "New Bit" (last one)
                     let isNew = (idx === step.pattern.length - 1);
                     let type = isNew ? 'pattern new-bit' : 'pattern';
                     let c = createCell(step.row, step.col+idx, bit, type);
-                    if(idx===0) addMSB(c); // Mark MSB of new pattern
+                    if(idx===0) addMSB(c); 
                     addEl(c);
                 });
             }
@@ -407,7 +399,6 @@
         function setMode(m) {
             mode = m;
             
-            // Toggle Button Styles
             const activeStyle = "px-6 py-2 rounded-md font-bold transition flex gap-2 items-center bg-blue-600 text-white shadow-md";
             const inactiveStyle = "px-6 py-2 rounded-md transition flex gap-2 items-center text-slate-400 hover:text-white hover:bg-slate-700";
             
@@ -418,12 +409,12 @@
             
             if(m==='rx') {
                 document.getElementById('rxTools').classList.remove('hidden');
-                document.getElementById('inData').value = '1010001';
+                document.getElementById('inData').value = '101000110101110'; 
             } else {
                 document.getElementById('rxTools').classList.add('hidden');
-                document.getElementById('inData').value = '1010';
+                document.getElementById('inData').value = '1010001101';
             }
-            document.getElementById('inPoly').value = '1101';
+            document.getElementById('inPoly').value = '110101';
             resetSim();
         }
 
@@ -505,7 +496,7 @@
                 title.innerText = "✅ النتيجة النهائية (Tx)";
                 title.className = "text-2xl font-bold text-blue-800 mb-4";
                 val.className = "text-6xl font-mono text-blue-600 font-bold tracking-[0.4em] mb-4";
-                desc.innerHTML = `الرسالة المرسلة: ${document.getElementById('inData').value}<span class="text-red-600">${crc}</span>`;
+                desc.innerHTML = `الرسالة المرسلة: ${document.getElementById('inData').value}<span class="text-blue-600 font-bold bg-blue-50 px-1 rounded">${crc}</span>`;
             } else {
                 let isZero = parseInt(crc) === 0;
                 if(isZero) {
