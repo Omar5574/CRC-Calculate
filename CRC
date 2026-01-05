@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRC Lab V13.1 (Tabs Fixed)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Fira+Code:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
+        .font-mono { font-family: 'Fira Code', monospace; } 
+        
+        .math-board-wrapper {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1);
+            overflow: auto; 
+            padding: 60px;
+            min-height: 60vh;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .math-grid {
+            display: grid;
+            grid-auto-rows: 55px; 
+            gap: 0px; 
+            direction: ltr; 
+        }
+
+        .cell {
+            width: 50px; height: 55px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Fira Code', monospace;
+            font-size: 24px; font-weight: 700;
+            color: #334155; position: relative;
+        }
+
+        /* Styles */
+        .cell.quotient { color: #64748b; font-size: 18px; border-bottom: none; }
+        .cell.dividend { background-color: #f1f5f9; border-top: 4px solid #1e2937; border-bottom: none; }
+        .cell.divisor { color: #0f172a; font-weight: 900; }
+        .cell.subtrahend { color: #475569; }
+        .cell.line { border-bottom: 3px solid #1e2937; height: 28px; align-self: start; }
+        
+        /* The New Pattern Row */
+        .cell.pattern { 
+            color: #0f172a; 
+            font-weight: 800; 
+            background-color: #fffbeb; /* Light yellow background for focus */
+            border-bottom: 1px dashed #e2e8f0;
+        } 
+        /* The specific bit that was just dropped */
+        .cell.pattern.new-bit {
+            color: #2563eb; 
+            background-color: #eff6ff;
+        }
+
+        .cell.padding { color: #dc2626; font-weight: 900; background-color: #fef2f2; } 
+        
+        /* MSB Indicator */
+        .msb-indicator {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f59e0b;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 50;
+            animation: fadeIn 0.3s;
+        }
+        .msb-indicator::after {
+            content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+            border-width: 4px 4px 0; border-style: solid; border-color: #f59e0b transparent transparent transparent;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -5px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+        .bracket-wall { border-right: 4px solid #1e2937; height: 100%; position: absolute; right: 0; top: 0; z-index: 5; }
+
+        .controls-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px);
+            padding: 15px 40px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            z-index: 100; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0;
+        }
+
+        .why-box {
+            background-color: #fff7ed; border-right: 5px solid #ea580c;
+            padding: 20px; border-radius: 8px; margin-bottom: 25px;
+            font-size: 1.15rem; color: #9a3412; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Rx Mode */
+        body.rx-active .cell.padding { color: #059669; background-color: #ecfdf5; }
+        body.rx-active .msb-indicator { background-color: #059669; }
+        body.rx-active .msb-indicator::after { border-color: #059669 transparent transparent transparent; }
+    </style>
+</head>
+<body class="pb-40">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white py-5 px-8 shadow-lg flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-6">
+            <h1 class="text-3xl font-bold text-yellow-400 font-mono tracking-wider">CRC Lab V13.1</h1>
+            
+            <div class="flex bg-slate-800 rounded-lg p-1 text-sm border border-slate-700">
+                <button onclick="setMode('tx')" id="tabTx" class="px-6 py-2 rounded-md font-bold transition flex gap-2 items-center bg-blue-600 text-white shadow-md">
+                    <span>📡</span> Transmitter
+                </button>
+                <button onclick="setMode('rx')" id="tabRx" class="px-6 py-2 rounded-md transition flex gap-2 items-center text-slate-400 hover:text-white hover:bg-slate-700">
+                    <span>📥</span> Receiver
+                </button>
+            </div>
+        </div>
+        <div class="text-sm text-slate-400 font-medium bg-slate-800 px-3 py-1 rounded">
+             Full Pattern Rewrite
+        </div>
+    </header>
+
+    <main class="w-full px-8 py-8 space-y-8">
+
+        <!-- Input Area -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-8 items-end justify-center">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase block mb-2" id="labelData">الرسالة (Message)</label>
+                <input type="text" id="inData" value="1010" class="w-64 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase block mb-2">المولد (Divisor)</label>
+                <input type="text" id="inPoly" value="1101" class="w-40 p-3 border-2 border-slate-200 rounded-xl font-mono text-center font-bold text-2xl focus:border-blue-500 outline-none transition text-slate-700">
+            </div>
+            
+            <div id="rxTools" class="hidden">
+                <button onclick="injectError()" class="bg-red-50 text-red-600 border border-red-200 px-6 py-3 rounded-xl font-bold hover:bg-red-100 transition h-[56px] flex items-center gap-2">
+                    <span>⚡</span> تشويش (Noise)
+                </button>
+            </div>
+
+            <button onclick="resetSim()" class="bg-slate-800 text-white px-10 py-3 rounded-xl font-bold hover:bg-slate-900 transition shadow-lg transform active:scale-95 flex gap-2 items-center text-lg h-[56px]">
+                <span>🔄</span> <span>ابدأ الحل</span>
+            </button>
+        </div>
+
+        <!-- Explanation -->
+        <div class="w-full max-w-7xl mx-auto">
+            <div class="why-box fade-in" id="doctorBox">
+                <strong>👨‍🏫 شرح الخطوة:</strong> <span id="explainText">اضغط "ابدأ الحل" للمتابعة.</span>
+            </div>
+        </div>
+
+        <!-- The Big Board -->
+        <div class="math-board-wrapper relative" id="boardContainer">
+            <div id="mathBoard" class="math-grid"></div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden bg-white border-4 border-emerald-100 rounded-2xl p-10 text-center max-w-3xl mx-auto mt-8 shadow-xl">
+            <h2 class="text-2xl font-bold text-emerald-800 mb-4" id="resTitle">✅ النتيجة النهائية</h2>
+            <div class="text-6xl font-mono text-emerald-600 font-bold tracking-[0.4em] mb-4 drop-shadow-sm" id="finalFCS"></div>
+            <p class="text-lg text-slate-600 font-medium bg-emerald-50 py-3 px-6 rounded-lg inline-block border border-emerald-100" id="resDesc"></p>
+        </div>
+
+    </main>
+
+    <!-- Bottom Controls -->
+    <div class="controls-bar">
+        <button onclick="prevStep()" id="btnPrev" disabled class="bg-slate-100 text-slate-500 hover:bg-slate-200 px-8 py-4 rounded-xl font-bold text-lg transition flex items-center gap-3 disabled:opacity-40 border border-slate-300">
+            <span>⬅️</span> خطوة سابقة
+        </button>
+        
+        <button onclick="nextStep()" id="btnNext" disabled class="bg-blue-600 text-white hover:bg-blue-700 px-16 py-4 rounded-xl font-bold text-2xl shadow-xl transition flex items-center gap-4 disabled:bg-slate-300 disabled:cursor-not-allowed transform active:scale-[0.98]">
+            <span id="btnNextText">الخطوة التالية</span> <span>➡️</span>
+        </button>
+    </div>
+
+    <script>
+        // --- State ---
+        let mode = 'tx';
+        let queue = [];
+        let cursor = 0;
+        let historyStack = [];
+
+        // --- Core Logic ---
+        function planSteps(data, poly) {
+            let q = [];
+            
+            // Setup
+            let paddingCount = (mode === 'tx') ? poly.length - 1 : 0;
+            let fullDividend = data + '0'.repeat(paddingCount);
+            let dividendArr = fullDividend.split('');
+            let polyLen = poly.length;
+            
+            const totalCols = polyLen + 1 + fullDividend.length;
+            
+            q.push({
+                op: 'setup', data, poly, padded: fullDividend, padding: paddingCount, 
+                startCol: polyLen + 1, totalCols: totalCols,
+                explain: (mode === 'tx') ? `<strong>البداية:</strong> الرسالة + <span class="text-red-600">${paddingCount} أصفار</span>.` : `<strong>البداية:</strong> الرسالة المستقبلة.`
+            });
+
+            // Logic: Maintain 'currentWindow' which is the chunk we are looking at.
+            // Initially, it is the first 'polyLen' bits.
+            // We also need to know "where" in the grid this window starts (colOffset).
+            
+            let currentWindow = dividendArr.slice(0, polyLen);
+            let nextBitPointer = polyLen; // Index of next bit to drop from dividendArr
+            let currentRow = 2; // Setup is row 1 (quotient), 2 (dividend)
+            let currentCol = polyLen + 1; // Start column of dividend
+
+            // Loop until done
+            while (true) {
+                let msb = currentWindow[0];
+                let workRow = currentRow + 1;
+
+                // 1. Update Quotient (Top Row)
+                // We update quotient at the position of the current MSB
+                q.push({
+                    op: 'quotient', val: (msb === '1' ? '1' : '0'), col: currentCol,
+                    explain: (msb === '1') ? `الـ <strong>MSB=1</strong> ← الناتج فوق 1.` : `الـ <strong>MSB=0</strong> ← الناتج فوق 0.`
+                });
+
+                if (msb === '0') {
+                    // --- SKIP LOGIC (No Subtraction) ---
+                    // We just shift left (drop 0) and bring down next bit.
+                    // Effectively: New Window = currentWindow[1:] + nextBit
+                    // We write this New Window on the NEXT row.
+                    
+                    if (nextBitPointer < dividendArr.length) {
+                        let nextBit = dividendArr[nextBitPointer];
+                        let newWindow = currentWindow.slice(1);
+                        newWindow.push(nextBit);
+                        
+                        currentCol++; // Shifted right by 1
+                        
+                        q.push({
+                            op: 'rewrite_pattern',
+                            pattern: newWindow,
+                            row: workRow, // Write on next row immediately
+                            col: currentCol,
+                            newBitVal: nextBit,
+                            msbCol: currentCol, // Mark MSB of new pattern
+                            explain: `الـ <strong>MSB=0</strong>: مش هنطرح. <br>هنرحل (Shift) وننزل الرقم اللي عليه الدور <strong>(${nextBit})</strong>.<br>الرقم الجديد بقى: <code>${newWindow.join('')}</code>.`
+                        });
+                        
+                        currentWindow = newWindow;
+                        nextBitPointer++;
+                        currentRow += 1; // Only consumed 1 row for the rewrite
+                        
+                    } else {
+                        // Done (MSB 0 and no more bits)
+                        q.push({ op: 'info', explain: "الـ MSB بصفر ومفيش أرقام تاني. خلصنا." });
+                        break;
+                    }
+
+                } else {
+                    // --- NORMAL SUBTRACTION (MSB = 1) ---
+                    
+                    // 2. Subtrahend
+                    q.push({
+                        op: 'subtrahend', val: poly, row: workRow, col: currentCol,
+                        msbCol: currentCol,
+                        explain: `الـ <strong>MSB=1</strong>: نكتب <code>${poly}</code> ونعمل XOR.`
+                    });
+
+                    // 3. Line
+                    q.push({
+                        op: 'line', len: polyLen, row: workRow + 1, col: currentCol
+                    });
+
+                    // 4. Calculate Result & Drop Next
+                    let xorResult = [];
+                    for(let k=0; k<polyLen; k++) xorResult.push(currentWindow[k] === poly[k] ? '0' : '1');
+                    
+                    // New Window logic
+                    let newWindow = xorResult.slice(1); // Drop MSB (it became 0)
+                    
+                    if (nextBitPointer < dividendArr.length) {
+                        let nextBit = dividendArr[nextBitPointer];
+                        newWindow.push(nextBit);
+                        
+                        currentCol++; // Shift right
+                        
+                        // 5. Rewrite Pattern (The Result + Dropped Bit)
+                        q.push({
+                            op: 'rewrite_pattern',
+                            pattern: newWindow,
+                            row: workRow + 2, // Sub + Line + Result
+                            col: currentCol,
+                            newBitVal: nextBit,
+                            msbCol: currentCol,
+                            explain: `الناتج XOR هو <code>${xorResult.slice(1).join('')}</code>.<br>نزلنا عليه <strong>${nextBit}</strong>.<br>الرقم الجديد بقى: <code class="bg-yellow-100 border border-yellow-400 px-1 rounded">${newWindow.join('')}</code>.`
+                        });
+                        
+                        currentWindow = newWindow;
+                        nextBitPointer++;
+                        currentRow += 3; // Consumed 3 rows
+
+                    } else {
+                        // Final Result (No drop)
+                        // currentWindow becomes the Remainder (size PolyLen-1)
+                        // Actually xorResult.slice(1) IS the remainder.
+                        currentWindow = xorResult.slice(1);
+                        
+                        q.push({
+                            op: 'result_final', val: currentWindow.join(''), 
+                            row: workRow+2, col: currentCol + 1, // Indented
+                            explain: `خلصنا! الباقي النهائي هو.`
+                        });
+                        break;
+                    }
+                }
+            }
+
+            let finalCRC = currentWindow.join('');
+            // Pad
+            while(finalCRC.length < polyLen - 1) finalCRC = '0' + finalCRC;
+
+            return { q, finalCRC, totalCols };
+        }
+
+        // --- Drawing ---
+        function draw(step) {
+            const board = document.getElementById('mathBoard');
+            let addedElements = [];
+            const addEl = (el) => { board.appendChild(el); addedElements.push(el); };
+
+            if(step.op === 'setup') {
+                board.style.gridTemplateColumns = `repeat(${step.totalCols + 2}, 50px)`;
+                for(let i=0; i<step.poly.length; i++) addEl(createCell(2, 1+i, step.poly[i], 'divisor'));
+                let bracket = createCell(2, step.poly.length, '', 'bracket');
+                bracket.appendChild(createWall());
+                addEl(bracket);
+                for(let i=0; i<step.padded.length; i++) {
+                    let type = (mode === 'tx' && i >= step.padded.length - step.padding) ? 'padding' : 'dividend';
+                    if (mode === 'rx' && i >= step.padded.length - (step.poly.length - 1)) type = 'padding';
+                    let c = createCell(2, step.startCol+i, step.padded[i], type);
+                    if(i===0) addMSB(c);
+                    addEl(c);
+                }
+                document.body.className = (mode==='rx') ? 'rx-active' : '';
+            }
+            else if(step.op === 'quotient') {
+                addEl(createCell(1, step.col, step.val, 'quotient'));
+            }
+            else if(step.op === 'subtrahend') {
+                for(let i=0; i<step.val.length; i++) addEl(createCell(step.row, step.col+i, step.val[i], 'subtrahend'));
+            }
+            else if(step.op === 'line') {
+                for(let i=0; i<step.len; i++) addEl(createCell(step.row, step.col+i, '', 'line'));
+            }
+            else if(step.op === 'rewrite_pattern') {
+                // Draw the full new pattern in one row
+                step.pattern.forEach((bit, idx) => {
+                    // Check if this bit is the "New Bit" (last one)
+                    let isNew = (idx === step.pattern.length - 1);
+                    let type = isNew ? 'pattern new-bit' : 'pattern';
+                    let c = createCell(step.row, step.col+idx, bit, type);
+                    if(idx===0) addMSB(c); // Mark MSB of new pattern
+                    addEl(c);
+                });
+            }
+            else if(step.op === 'result_final') {
+                for(let i=0; i<step.val.length; i++) addEl(createCell(step.row, step.col+i, step.val[i], 'result'));
+            }
+            
+            if(cursor === queue.length - 1) showResults(window.finalRes);
+            return addedElements;
+        }
+
+        function createCell(row, col, text, type) {
+            const div = document.createElement('div');
+            div.className = `cell ${type}`;
+            div.style.gridRow = row;
+            div.style.gridColumn = col;
+            div.innerText = text;
+            return div;
+        }
+
+        function createWall() {
+            const d = document.createElement('div');
+            d.className = 'bracket-wall';
+            return d;
+        }
+
+        function addMSB(cell) {
+            const m = document.createElement('div');
+            m.className = 'msb-indicator';
+            m.innerText = 'MSB';
+            cell.appendChild(m);
+            cell.style.overflow = 'visible';
+        }
+
+        // --- Interaction ---
+        function setMode(m) {
+            mode = m;
+            
+            // Toggle Button Styles
+            const activeStyle = "px-6 py-2 rounded-md font-bold transition flex gap-2 items-center bg-blue-600 text-white shadow-md";
+            const inactiveStyle = "px-6 py-2 rounded-md transition flex gap-2 items-center text-slate-400 hover:text-white hover:bg-slate-700";
+            
+            document.getElementById('tabTx').className = (m === 'tx') ? activeStyle : inactiveStyle;
+            document.getElementById('tabRx').className = (m === 'rx') ? activeStyle : inactiveStyle;
+
+            document.getElementById('labelData').innerText = (m==='tx') ? "الرسالة (Data)" : "البيانات المستقبلة";
+            
+            if(m==='rx') {
+                document.getElementById('rxTools').classList.remove('hidden');
+                document.getElementById('inData').value = '1010001';
+            } else {
+                document.getElementById('rxTools').classList.add('hidden');
+                document.getElementById('inData').value = '1010';
+            }
+            document.getElementById('inPoly').value = '1101';
+            resetSim();
+        }
+
+        function injectError() {
+            let val = document.getElementById('inData').value.split('');
+            let idx = Math.floor(Math.random()*val.length);
+            val[idx] = val[idx] === '0' ? '1' : '0';
+            document.getElementById('inData').value = val.join('');
+            resetSim();
+            document.getElementById('explainText').innerHTML = `<span class="text-red-600 font-bold">⚠️ تم تغيير البت رقم ${idx+1}!</span>`;
+        }
+
+        function resetSim() {
+            const d = document.getElementById('inData').value;
+            const p = document.getElementById('inPoly').value;
+            if(!d || p.length < 2) return alert("البيانات غير صحيحة");
+
+            document.getElementById('mathBoard').innerHTML = '';
+            document.getElementById('resultSection').classList.add('hidden');
+
+            const plan = planSteps(d, p);
+            queue = plan.q;
+            window.finalRes = plan.finalCRC;
+            cursor = 0;
+            historyStack = [];
+
+            document.getElementById('btnNext').disabled = false;
+            document.getElementById('btnPrev').disabled = true;
+            document.getElementById('btnNextText').innerText = "الخطوة التالية";
+
+            nextStep(); 
+        }
+
+        function nextStep() {
+            if(cursor >= queue.length) return;
+            const step = queue[cursor];
+            const els = draw(step);
+            historyStack.push(els);
+            if(step.explain) document.getElementById('explainText').innerHTML = step.explain;
+            cursor++;
+            updateButtons();
+            
+            const board = document.getElementById('mathBoard');
+            if(board.parentElement) board.parentElement.scrollTop = board.parentElement.scrollHeight;
+        }
+
+        function prevStep() {
+            if(cursor <= 1) return; 
+            cursor--;
+            const lastEls = historyStack.pop();
+            lastEls.forEach(el => el.remove());
+            const prevStep = queue[cursor-1];
+            if(prevStep && prevStep.explain) document.getElementById('explainText').innerHTML = prevStep.explain;
+            document.getElementById('resultSection').classList.add('hidden');
+            updateButtons();
+        }
+
+        function updateButtons() {
+            document.getElementById('btnPrev').disabled = (cursor <= 1);
+            const nextBtn = document.getElementById('btnNext');
+            if(cursor >= queue.length) {
+                nextBtn.disabled = true;
+                document.getElementById('btnNextText').innerText = "تم الحل";
+            } else {
+                nextBtn.disabled = false;
+                document.getElementById('btnNextText').innerText = "الخطوة التالية";
+            }
+        }
+
+        function showResults(crc) {
+            const sec = document.getElementById('resultSection');
+            sec.classList.remove('hidden');
+            const title = document.getElementById('resTitle');
+            const val = document.getElementById('finalFCS');
+            const desc = document.getElementById('resDesc');
+            
+            val.innerText = crc;
+            if(mode === 'tx') {
+                title.innerText = "✅ النتيجة النهائية (Tx)";
+                title.className = "text-2xl font-bold text-blue-800 mb-4";
+                val.className = "text-6xl font-mono text-blue-600 font-bold tracking-[0.4em] mb-4";
+                desc.innerHTML = `الرسالة المرسلة: ${document.getElementById('inData').value}<span class="text-red-600">${crc}</span>`;
+            } else {
+                let isZero = parseInt(crc) === 0;
+                if(isZero) {
+                    title.innerText = "🎉 الرسالة سليمة (No Error)";
+                    title.className = "text-2xl font-bold text-emerald-800 mb-4";
+                    val.className = "text-6xl font-mono text-emerald-600 font-bold tracking-[0.4em] mb-4";
+                    desc.innerText = "الباقي صفر = تمام.";
+                } else {
+                    title.innerText = "⚠️ خطأ (Error Detected)";
+                    title.className = "text-2xl font-bold text-red-800 mb-4";
+                    val.className = "text-6xl font-mono text-red-600 font-bold tracking-[0.4em] mb-4";
+                    desc.innerText = "الباقي مش صفر = اطلب إعادة إرسال.";
+                }
+            }
+            setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
+        }
+        
+        resetSim();
+
+    </script>
+</body>
+</html>
